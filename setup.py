@@ -7,5 +7,5 @@ setup(name="carto-waze",
       version="0.0.1",
       license="MIT",
       url="https://github.com/CartoDB/carto-waze",
-      install_requires=['carto>=1.3.0', "psycopg2>=2.7.5"],
+      install_requires=["carto>=1.3.0", "psycopg2>=2.7.5", "shapely>=1.6.4"],
       packages=["carto-waze"])
