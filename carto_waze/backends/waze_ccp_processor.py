@@ -7,23 +7,65 @@ from shapely.geometry import Point, LineString
 from .base import Backend, with_datasource, with_filter
 
 SRID = 4326
-ALERT_FIELDS = ("uuid", "pub_millis", "pub_utc_date", "road_type", "location", "street", "city", "country", "magvar", "reliability", "report_description", "report_rating", "confidence", "type", "subtype", "report_by_municipality_user", "thumbs_up", "jam_uuid", "datafile_id", "type_id")
-JAM_FIELDS = ("uuid", "pub_millis", "pub_utc_date", "start_node", "end_node", "road_type", "street", "city", "country", "delay", "speed", "speed_kmh", "length", "turn_type", "level", "blocking_alert_id", "line", "type", "turn_line", "datafile_id")
+ALERT_FIELDS = {
+    "uuid": "text",
+    "pub_millis": "bigint",
+    "pub_utc_date": "timestamp without time zone",
+    "road_type": "integer",
+    "location": "jsonb",
+    "street": "text",
+    "city": "text",
+    "country": "text",
+    "magvar": "integer",
+    "reliability": "integer",
+    "report_description": "text",
+    "report_rating": "integer",
+    "confidence": "integer",
+    "type": "text",
+    "subtype": "text",
+    "report_by_municipality_user": "boolean",
+    "thumbs_up": "integer",
+    "jam_uuid": "text",
+    "datafile_id": "bigint",
+    "type_id": "integer"
+}
 
+JAM_FIELDS = {
+    "uuid": "text",
+    "pub_millis": "bigint",
+    "pub_utc_date": "timestamp without time zone",
+    "start_node": "text",
+    "end_node": "text",
+    "road_type": "integer",
+    "street": "text",
+    "city": "text",
+    "country": "text",
+    "delay": "integer",
+    "speed": "real",
+    "speed_kmh": "real",
+    "length": "integer",
+    "turn_type": "text",
+    "level": "integer",
+    "blocking_alert_id": "text",
+    "line": "jsonb",
+    "type": "text",
+    "turn_line": "jsonb",
+    "datafile_id": "bigint"
+}
 
 geos.WKBWriter.defaults['include_srid'] = True
 
 
 class WazeCCPProcessor(Backend):
-    def __init__(self, dbname, username, password, host=None, port=None, schema="waze"):
-        self.dbname = dbname
+    def __init__(self, *args, username="waze_readonly", password="", dbname="waze_data", host="", port="", schema="waze"):
         self.username = username
         self.password = password
+        self.dbname = dbname
         self.host = host
         self.port = port
         self.schema = schema
         self.conn = None
-        super().__init__()
+        super().__init__(*args)
 
     def get_datasource(self):
         if self.conn is None:
@@ -44,16 +86,20 @@ class WazeCCPProcessor(Backend):
 class AlertProcessor(WazeCCPProcessor):
     fields = ALERT_FIELDS
 
+    def __init__(self, *args, **kwargs):
+        self.table_name = "alerts"
+        super().__init__(*args, **kwargs)
+
     @with_filter
     @with_datasource
     def get_values(self, datasource, filter, descriptor):
         where_clause = " and ".join(filter)
 
-        datasource.execute("select {alert_fields} from alerts where {where_clause} limit 3".format(alert_fields=",".join(ALERT_FIELDS), where_clause=where_clause))
+        datasource.execute("select {alert_fields} from alerts where {where_clause} limit 3".format(alert_fields=",".join(self.field_names), where_clause=where_clause))
 
         alert_writer = csv.writer(descriptor)
-        alert_writer.writerow(ALERT_FIELDS + ("the_geom",))
-        location_field_idx = ALERT_FIELDS.index("location")
+        alert_writer.writerow(self.field_names + ["the_geom"])
+        location_field_idx = self.field_names.index("location")
 
         for alert in datasource.fetchall():
             the_geom = Point(alert[location_field_idx]["x"], alert[location_field_idx]["y"])
@@ -64,16 +110,20 @@ class AlertProcessor(WazeCCPProcessor):
 class JamProcessor(WazeCCPProcessor):
     fields = JAM_FIELDS
 
+    def __init__(self, *args, **kwargs):
+        self.table_name = "jams"
+        super().__init__(*args, **kwargs)
+
     @with_filter
     @with_datasource
     def get_values(self, datasource, filter, descriptor):
         where_clause = " and ".join(filter)
 
-        datasource.execute("select {jam_fields} from jams where {where_clause} limit 3".format(jam_fields=",".join(JAM_FIELDS), where_clause=where_clause))
+        datasource.execute("select {jam_fields} from jams where {where_clause} limit 3".format(jam_fields=",".join(self.field_names), where_clause=where_clause))
 
         jam_writer = csv.writer(descriptor)
-        jam_writer.writerow(JAM_FIELDS + ("the_geom",))
-        line_field_idx = JAM_FIELDS.index("line")
+        jam_writer.writerow(self.field_names + ["the_geom"])
+        line_field_idx = self.field_names.index("line")
 
         for jam in datasource.fetchall():
             the_geom = LineString([(point["x"], point["y"]) for point in jam[line_field_idx]])
