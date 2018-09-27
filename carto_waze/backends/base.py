@@ -35,8 +35,13 @@ def with_filter(method):
 
 
 class Backend:
+    fields = None
+
     def __init__(self):
         self.datasource = None
 
     def get_datasource(self):
         return self.datasource
+
+    def get_values(self):
+        raise NotImplementedError

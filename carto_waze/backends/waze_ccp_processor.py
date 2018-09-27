@@ -37,9 +37,16 @@ class WazeCCPProcessor(Backend):
         datasource.execute('set search_path to "{schema}"'.format(schema=self.schema))
         return datasource
 
+    def get_values(self):
+        raise NotImplementedError
+
+
+class AlertProcessor(WazeCCPProcessor):
+    fields = ALERT_FIELDS
+
     @with_filter
     @with_datasource
-    def get_alerts(self, datasource, filter, descriptor):
+    def get_values(self, datasource, filter, descriptor):
         where_clause = " and ".join(filter)
 
         datasource.execute("select {alert_fields} from alerts where {where_clause} limit 3".format(alert_fields=",".join(ALERT_FIELDS), where_clause=where_clause))
@@ -53,9 +60,13 @@ class WazeCCPProcessor(Backend):
             geos.lgeos.GEOSSetSRID(the_geom._geom, SRID)
             alert_writer.writerow(alert + (the_geom.wkb_hex,))
 
+
+class JamProcessor(WazeCCPProcessor):
+    fields = JAM_FIELDS
+
     @with_filter
     @with_datasource
-    def get_jams(self, datasource, filter, descriptor):
+    def get_values(self, datasource, filter, descriptor):
         where_clause = " and ".join(filter)
 
         datasource.execute("select {jam_fields} from jams where {where_clause} limit 3".format(jam_fields=",".join(JAM_FIELDS), where_clause=where_clause))
