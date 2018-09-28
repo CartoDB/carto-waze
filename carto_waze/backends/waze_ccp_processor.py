@@ -4,54 +4,9 @@ import psycopg2
 from shapely import geos
 from shapely.geometry import Point, LineString
 
-from .base import Backend, with_datasource, with_filter
+from .base import Backend, with_datasource, with_filter, ALERT_FIELDS, JAM_FIELDS
 
 SRID = 4326
-ALERT_FIELDS = {
-    "uuid": "text",
-    "pub_millis": "bigint",
-    "pub_utc_date": "timestamp without time zone",
-    "road_type": "integer",
-    "location": "jsonb",
-    "street": "text",
-    "city": "text",
-    "country": "text",
-    "magvar": "integer",
-    "reliability": "integer",
-    "report_description": "text",
-    "report_rating": "integer",
-    "confidence": "integer",
-    "type": "text",
-    "subtype": "text",
-    "report_by_municipality_user": "boolean",
-    "thumbs_up": "integer",
-    "jam_uuid": "text",
-    "datafile_id": "bigint",
-    "type_id": "integer"
-}
-
-JAM_FIELDS = {
-    "uuid": "text",
-    "pub_millis": "bigint",
-    "pub_utc_date": "timestamp without time zone",
-    "start_node": "text",
-    "end_node": "text",
-    "road_type": "integer",
-    "street": "text",
-    "city": "text",
-    "country": "text",
-    "delay": "integer",
-    "speed": "real",
-    "speed_kmh": "real",
-    "length": "integer",
-    "turn_type": "text",
-    "level": "integer",
-    "blocking_alert_id": "text",
-    "line": "jsonb",
-    "type": "text",
-    "turn_line": "jsonb",
-    "datafile_id": "bigint"
-}
 
 geos.WKBWriter.defaults['include_srid'] = True
 
