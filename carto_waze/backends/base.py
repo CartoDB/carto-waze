@@ -45,7 +45,6 @@ JAM_FIELDS = (
     ("level", "integer"),
     ("blocking_alert_id", "text"),
     ("type", "text"),
-#    ("turn_line", "jsonb"),
     ("datafile_id", "bigint")
 )
 
