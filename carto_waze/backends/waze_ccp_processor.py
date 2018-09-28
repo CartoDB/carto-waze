@@ -35,7 +35,7 @@ class WazeCCPProcessor(Backend):
     def get_values(self, datasource, filter, descriptor):
         where_clause = " and ".join(filter)
 
-        datasource.execute("select {columns} from {table_name} where {where_clause} limit 3".format(columns=",".join(self.waze_field_names), table_name=self.table_name, where_clause=where_clause))
+        datasource.execute("select {columns} from {table_name} where {where_clause}".format(columns=",".join(self.waze_field_names), table_name=self.table_name, where_clause=where_clause))
 
         csv_writer = csv.writer(descriptor)
         csv_writer.writerow(self.carto_field_names)
