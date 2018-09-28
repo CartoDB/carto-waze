@@ -6,12 +6,14 @@ from shapely.geometry import Point, LineString
 
 from .base import Backend, with_datasource, with_filter, ALERT_FIELDS, JAM_FIELDS
 
-SRID = 4326
 
 geos.WKBWriter.defaults['include_srid'] = True
 
 
 class WazeCCPProcessor(Backend):
+    location_column = "location"
+    waze_table = ""
+
     def __init__(self, *args, username="waze_readonly", password="", dbname="waze_data", host="", port="", schema="waze"):
         self.username = username
         self.password = password
@@ -34,53 +36,54 @@ class WazeCCPProcessor(Backend):
         datasource.execute('set search_path to "{schema}"'.format(schema=self.schema))
         return datasource
 
-    def get_values(self):
+    @with_filter
+    @with_datasource
+    def get_values(self, datasource, filter, descriptor):
+        where_clause = " and ".join(filter)
+
+        datasource.execute("select {columns} from {table_name} where {where_clause} limit 3".format(columns=",".join(self.field_names), table_name=self.waze_table, where_clause=where_clause))
+
+        csv_writer = csv.writer(descriptor)
+        csv_writer.writerow(self.field_names_with_geom)
+
+        for row in datasource.fetchall():
+            location = self.get_location(row)
+            the_geom = self.get_the_geom(location)
+            csv_writer.writerow(self.build_row_with_geom(row, the_geom.wkb_hex))
+
+    def get_location(self, row):
+        for i, column in enumerate(self.field_names):
+            if column == self.location_column:
+                return row[i]
+
+    def get_the_geom(self):
         raise NotImplementedError
 
 
 class AlertProcessor(WazeCCPProcessor):
     fields = ALERT_FIELDS
+    waze_table = "alerts"
 
     def __init__(self, *args, **kwargs):
-        self.table_name = "alerts"
+        self.carto_table_name = "alerts"
+        self.waze_table_name = "alerts"
         super().__init__(*args, **kwargs)
 
-    @with_filter
-    @with_datasource
-    def get_values(self, datasource, filter, descriptor):
-        where_clause = " and ".join(filter)
-
-        datasource.execute("select {alert_fields} from alerts where {where_clause} limit 3".format(alert_fields=",".join(self.field_names), where_clause=where_clause))
-
-        alert_writer = csv.writer(descriptor)
-        alert_writer.writerow(self.field_names + ["the_geom"])
-        location_field_idx = self.field_names.index("location")
-
-        for alert in datasource.fetchall():
-            the_geom = Point(alert[location_field_idx]["x"], alert[location_field_idx]["y"])
-            geos.lgeos.GEOSSetSRID(the_geom._geom, SRID)
-            alert_writer.writerow(alert + (the_geom.wkb_hex,))
+    def get_the_geom(self, location):
+        the_geom = Point(location["x"], location["y"])
+        geos.lgeos.GEOSSetSRID(the_geom._geom, 4326)
+        return the_geom
 
 
 class JamProcessor(WazeCCPProcessor):
     fields = JAM_FIELDS
+    location_column = "location"
+    waze_table = "jams"
 
     def __init__(self, *args, **kwargs):
         self.table_name = "jams"
         super().__init__(*args, **kwargs)
 
-    @with_filter
-    @with_datasource
-    def get_values(self, datasource, filter, descriptor):
-        where_clause = " and ".join(filter)
-
-        datasource.execute("select {jam_fields} from jams where {where_clause} limit 3".format(jam_fields=",".join(self.field_names), where_clause=where_clause))
-
-        jam_writer = csv.writer(descriptor)
-        jam_writer.writerow(self.field_names + ["the_geom"])
-        line_field_idx = self.field_names.index("line")
-
-        for jam in datasource.fetchall():
-            the_geom = LineString([(point["x"], point["y"]) for point in jam[line_field_idx]])
-            geos.lgeos.GEOSSetSRID(the_geom._geom, SRID)
-            jam_writer.writerow(jam + (the_geom.wkb_hex,))
+    def get_the_geom(self, location):
+        the_geom = LineString([(point["x"], point["y"]) for point in location])
+        return geos.lgeos.GEOSSetSRID(the_geom._geom, 4326)
