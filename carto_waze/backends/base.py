@@ -90,7 +90,7 @@ class Backend:
     def __init__(self, carto_auth_client):
         self.carto_auth_client = carto_auth_client
         self.datasource = None
-        self.table_name = ""
+        self.carto_table_name = ""
 
     @property
     def fields_with_geom(self):
@@ -114,7 +114,7 @@ class Backend:
         raise NotImplementedError
 
     def create_table(self, table_name=None, cartodbfy=False):
-        table_name = table_name or self.table_name
+        table_name = table_name or self.carto_table_name
         client = SQLClient(self.carto_auth_client)
 
         client.send("CREATE TABLE IF NOT EXISTS {table_name} ({columns})".format(table_name=table_name, columns=",".join((name + " " + type for (name, type) in self.fields_with_geom))))
@@ -122,7 +122,7 @@ class Backend:
             client.send("SELECT CDB_CartodbfyTable('{schema}', '{table_name}')".format(schema=self.carto_auth_client.username, table_name=table_name))
 
     def append_data(self, descriptor, table_name=None):
-        table_name = table_name or self.table_name
+        table_name = table_name or self.carto_table_name
         client = CopySQLClient(self.carto_auth_client)
 
         query = "COPY {table_name} ({columns}) FROM stdin WITH (FORMAT csv, HEADER true)".format(table_name=table_name, columns=",".join(self.field_names_with_geom))

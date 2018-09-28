@@ -12,7 +12,7 @@ geos.WKBWriter.defaults['include_srid'] = True
 
 class WazeCCPProcessor(Backend):
     location_column = "location"
-    waze_table = ""
+    table_name = ""
 
     def __init__(self, *args, username="waze_readonly", password="", dbname="waze_data", host="", port="", schema="waze"):
         self.username = username
@@ -41,7 +41,7 @@ class WazeCCPProcessor(Backend):
     def get_values(self, datasource, filter, descriptor):
         where_clause = " and ".join(filter)
 
-        datasource.execute("select {columns} from {table_name} where {where_clause} limit 3".format(columns=",".join(self.field_names), table_name=self.waze_table, where_clause=where_clause))
+        datasource.execute("select {columns} from {table_name} where {where_clause} limit 3".format(columns=",".join(self.field_names), table_name=self.table_name, where_clause=where_clause))
 
         csv_writer = csv.writer(descriptor)
         csv_writer.writerow(self.field_names_with_geom)
@@ -62,11 +62,11 @@ class WazeCCPProcessor(Backend):
 
 class AlertProcessor(WazeCCPProcessor):
     fields = ALERT_FIELDS
-    waze_table = "alerts"
+    table_name = "alerts"
 
     def __init__(self, *args, **kwargs):
         self.carto_table_name = "alerts"
-        self.waze_table_name = "alerts"
+        self.table_name_name = "alerts"
         super().__init__(*args, **kwargs)
 
     def get_the_geom(self, location):
@@ -78,7 +78,7 @@ class AlertProcessor(WazeCCPProcessor):
 class JamProcessor(WazeCCPProcessor):
     fields = JAM_FIELDS
     location_column = "location"
-    waze_table = "jams"
+    table_name = "jams"
 
     def __init__(self, *args, **kwargs):
         self.table_name = "jams"
