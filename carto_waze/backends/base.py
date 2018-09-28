@@ -108,7 +108,7 @@ class Backend:
 
         client.send("CREATE TABLE IF NOT EXISTS {table_name} (the_geom geometry(Geometry, 4326),{columns})".format(table_name=table_name, columns=",".join([name + " " + value for name, value in self.fields.items()])))
         if cartodbfy is True:
-            client.send("SELECT CDB_CartodbfyTable({schema}, '{table_name}')".format(schema=self.carto_auth_client.username, table_name=table_name))
+            client.send("SELECT CDB_CartodbfyTable('{schema}', '{table_name}')".format(schema=self.carto_auth_client.username, table_name=table_name))
 
     def append_data(self, descriptor, table_name=None):
         table_name = table_name or self.table_name
