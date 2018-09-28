@@ -6,7 +6,6 @@ from .base import Backend, with_datasource, with_filter, ALERT_FIELDS, JAM_FIELD
 
 
 class WazeCCPProcessor(Backend):
-    location_column = "location"
     table_name = ""
 
     def __init__(self, *args, username="waze_readonly", password="", dbname="waze_data", host="", port="", schema="waze"):
@@ -36,10 +35,10 @@ class WazeCCPProcessor(Backend):
     def get_values(self, datasource, filter, descriptor):
         where_clause = " and ".join(filter)
 
-        datasource.execute("select {columns} from {table_name} where {where_clause} limit 3".format(columns=",".join(self.field_names), table_name=self.table_name, where_clause=where_clause))
+        datasource.execute("select {columns} from {table_name} where {where_clause} limit 3".format(columns=",".join(self.waze_field_names), table_name=self.table_name, where_clause=where_clause))
 
         csv_writer = csv.writer(descriptor)
-        csv_writer.writerow(self.field_names_with_geom)
+        csv_writer.writerow(self.carto_field_names)
 
         for row in datasource.fetchall():
             location = self.get_location(row)
@@ -47,8 +46,8 @@ class WazeCCPProcessor(Backend):
             csv_writer.writerow(self.build_row_with_geom(row, the_geom.wkb_hex))
 
     def get_location(self, row):
-        for i, column in enumerate(self.field_names):
-            if column == self.location_column:
+        for i, column in enumerate(self.waze_field_names):
+            if column == self.location_field:
                 return row[i]
 
     def get_the_geom(self):
@@ -56,7 +55,7 @@ class WazeCCPProcessor(Backend):
 
 
 class AlertProcessor(WazeCCPProcessor):
-    fields = ALERT_FIELDS
+    common_fields = ALERT_FIELDS
     table_name = "alerts"
 
     def __init__(self, *args, **kwargs):
@@ -69,8 +68,8 @@ class AlertProcessor(WazeCCPProcessor):
 
 
 class JamProcessor(WazeCCPProcessor):
-    fields = JAM_FIELDS
-    location_column = "location"
+    common_fields = JAM_FIELDS
+    location_field = "line"
     table_name = "jams"
 
     def __init__(self, *args, **kwargs):

@@ -10,7 +10,6 @@ ALERT_FIELDS = (
     ("pub_millis", "bigint"),
     ("pub_utc_date", "timestamp without time zone"),
     ("road_type", "integer"),
-    ("location", "jsonb"),
     ("street", "text"),
     ("city", "text"),
     ("country", "text"),
@@ -45,9 +44,7 @@ JAM_FIELDS = (
     ("turn_type", "text"),
     ("level", "integer"),
     ("blocking_alert_id", "text"),
-    ("line", "jsonb"),
     ("type", "text"),
-    ("turn_line", "jsonb"),
     ("datafile_id", "bigint")
 )
 
@@ -89,7 +86,8 @@ def with_filter(method):
 
 
 class Backend:
-    fields = None
+    common_fields = None
+    location_field = "location"
 
     def __init__(self, carto_auth_client):
         self.carto_auth_client = carto_auth_client
@@ -97,19 +95,19 @@ class Backend:
         self.carto_table_name = ""
 
     @property
-    def fields_with_geom(self):
-        return (("the_geom", "geometry(Geometry, 4326)"),) + self.fields
+    def waze_field_names(self):
+        return (name for (name, type) in ((self.location_field, ""),) + self.common_fields)
+
+    @property
+    def carto_fields(self):
+        return (("the_geom", "geometry(Geometry, 4326)"),) + self.common_fields
 
     def build_row_with_geom(self, row, geom):
-        return (geom,) + row
+        return (geom,) + row[1:]
 
     @property
-    def field_names(self):
-        return (name for (name, type) in self.fields)
-
-    @property
-    def field_names_with_geom(self):
-        return (name for (name, type) in self.fields_with_geom)
+    def carto_field_names(self):
+        return (name for (name, type) in self.carto_fields)
 
     def get_datasource(self):
         return self.datasource
@@ -121,7 +119,7 @@ class Backend:
         table_name = table_name or self.carto_table_name
         client = SQLClient(self.carto_auth_client)
 
-        client.send("CREATE TABLE IF NOT EXISTS {table_name} ({columns})".format(table_name=table_name, columns=",".join((name + " " + type for (name, type) in self.fields_with_geom))))
+        client.send("CREATE TABLE IF NOT EXISTS {table_name} ({columns})".format(table_name=table_name, columns=",".join((name + " " + type for (name, type) in self.carto_fields))))
         if cartodbfy is True:
             client.send("SELECT CDB_CartodbfyTable('{schema}', '{table_name}')".format(schema=self.carto_auth_client.username, table_name=table_name))
 
@@ -129,7 +127,7 @@ class Backend:
         table_name = table_name or self.carto_table_name
         client = CopySQLClient(self.carto_auth_client)
 
-        query = "COPY {table_name} ({columns}) FROM stdin WITH (FORMAT csv, HEADER true)".format(table_name=table_name, columns=",".join(self.field_names_with_geom))
+        query = "COPY {table_name} ({columns}) FROM stdin WITH (FORMAT csv, HEADER true)".format(table_name=table_name, columns=",".join(self.carto_field_names))
         client.copyfrom_file_object(query, descriptor)
 
     def get_point(self, location_json):
