@@ -79,7 +79,12 @@ def with_filter(method):
                     operator = "<"
                 elif operator == "lte":
                     operator = "<="
-            filter.append(field + operator + str(value))
+            try:
+                float(value)
+            except (TypeError, ValueError):
+                filter.append(field + operator + "'" + str(value) + "'")
+            else:
+                filter.append(field + operator + value)
         return method(self, filter, *args)
 
     return method_wrapper
