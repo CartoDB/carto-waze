@@ -1,13 +1,8 @@
 import logging
 import csv
 import psycopg2
-from shapely import geos
-from shapely.geometry import Point, LineString
 
 from .base import Backend, with_datasource, with_filter, ALERT_FIELDS, JAM_FIELDS
-
-
-geos.WKBWriter.defaults['include_srid'] = True
 
 
 class WazeCCPProcessor(Backend):
@@ -70,9 +65,7 @@ class AlertProcessor(WazeCCPProcessor):
         super().__init__(*args, **kwargs)
 
     def get_the_geom(self, location):
-        the_geom = Point(location["x"], location["y"])
-        geos.lgeos.GEOSSetSRID(the_geom._geom, 4326)
-        return the_geom
+        return self.get_point(location)
 
 
 class JamProcessor(WazeCCPProcessor):
@@ -85,5 +78,4 @@ class JamProcessor(WazeCCPProcessor):
         super().__init__(*args, **kwargs)
 
     def get_the_geom(self, location):
-        the_geom = LineString([(point["x"], point["y"]) for point in location])
-        return geos.lgeos.GEOSSetSRID(the_geom._geom, 4326)
+        return self.get_line(location)
