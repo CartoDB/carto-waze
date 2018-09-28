@@ -6,3 +6,6 @@ __pycache__
 *.zip
 *.csv
 *.egg-info
+
+*_jsanz.*
+.vscode
