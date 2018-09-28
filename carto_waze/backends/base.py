@@ -1,5 +1,9 @@
+from shapely import geos
+from shapely.geometry import Point, LineString
 from carto.sql import SQLClient, CopySQLClient
 
+
+geos.WKBWriter.defaults['include_srid'] = True
 
 ALERT_FIELDS = (
     ("uuid", "text"),
@@ -127,3 +131,13 @@ class Backend:
 
         query = "COPY {table_name} ({columns}) FROM stdin WITH (FORMAT csv, HEADER true)".format(table_name=table_name, columns=",".join(self.field_names_with_geom))
         client.copyfrom_file_object(query, descriptor)
+
+    def get_point(self, location_json):
+        the_geom = Point(location_json["x"], location_json["y"])
+        geos.lgeos.GEOSSetSRID(the_geom._geom, 4326)
+        return the_geom
+
+    def get_line(self, location_json):
+        the_geom = LineString([(point["x"], point["y"]) for point in location_json])
+        geos.lgeos.GEOSSetSRID(the_geom._geom, 4326)
+        return the_geom
