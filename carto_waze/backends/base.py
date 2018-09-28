@@ -1,51 +1,51 @@
 from carto.sql import SQLClient, CopySQLClient
 
 
-ALERT_FIELDS = {
-    "uuid": "text",
-    "pub_millis": "bigint",
-    "pub_utc_date": "timestamp without time zone",
-    "road_type": "integer",
-    "location": "jsonb",
-    "street": "text",
-    "city": "text",
-    "country": "text",
-    "magvar": "integer",
-    "reliability": "integer",
-    "report_description": "text",
-    "report_rating": "integer",
-    "confidence": "integer",
-    "type": "text",
-    "subtype": "text",
-    "report_by_municipality_user": "boolean",
-    "thumbs_up": "integer",
-    "jam_uuid": "text",
-    "datafile_id": "bigint",
-    "type_id": "integer"
-}
+ALERT_FIELDS = (
+    ("uuid", "text"),
+    ("pub_millis", "bigint"),
+    ("pub_utc_date", "timestamp without time zone"),
+    ("road_type", "integer"),
+    ("location", "jsonb"),
+    ("street", "text"),
+    ("city", "text"),
+    ("country", "text"),
+    ("magvar", "integer"),
+    ("reliability", "integer"),
+    ("report_description", "text"),
+    ("report_rating", "integer"),
+    ("confidence", "integer"),
+    ("type", "text"),
+    ("subtype", "text"),
+    ("report_by_municipality_user", "boolean"),
+    ("thumbs_up", "integer"),
+    ("jam_uuid", "text"),
+    ("datafile_id", "bigint"),
+    ("type_id", "integer")
+)
 
-JAM_FIELDS = {
-    "uuid": "text",
-    "pub_millis": "bigint",
-    "pub_utc_date": "timestamp without time zone",
-    "start_node": "text",
-    "end_node": "text",
-    "road_type": "integer",
-    "street": "text",
-    "city": "text",
-    "country": "text",
-    "delay": "integer",
-    "speed": "real",
-    "speed_kmh": "real",
-    "length": "integer",
-    "turn_type": "text",
-    "level": "integer",
-    "blocking_alert_id": "text",
-    "line": "jsonb",
-    "type": "text",
-    "turn_line": "jsonb",
-    "datafile_id": "bigint"
-}
+JAM_FIELDS = (
+    ("uuid", "text"),
+    ("pub_millis", "bigint"),
+    ("pub_utc_date", "timestamp without time zone"),
+    ("start_node", "text"),
+    ("end_node", "text"),
+    ("road_type", "integer"),
+    ("street", "text"),
+    ("city", "text"),
+    ("country", "text"),
+    ("delay", "integer"),
+    ("speed", "real"),
+    ("speed_kmh", "real"),
+    ("length", "integer"),
+    ("turn_type", "text"),
+    ("level", "integer"),
+    ("blocking_alert_id", "text"),
+    ("line", "jsonb"),
+    ("type", "text"),
+    ("turn_line", "jsonb"),
+    ("datafile_id", "bigint")
+)
 
 
 def with_datasource(method):
@@ -93,8 +93,19 @@ class Backend:
         self.table_name = ""
 
     @property
+    def fields_with_geom(self):
+        return (("the_geom", "geometry(Geometry, 4326)"),) + self.fields
+
+    def build_row_with_geom(self, row, geom):
+        return (geom,) + row
+
+    @property
     def field_names(self):
-        return list(self.fields.keys())
+        return (name for (name, type) in self.fields)
+
+    @property
+    def field_names_with_geom(self):
+        return (name for (name, type) in self.fields_with_geom)
 
     def get_datasource(self):
         return self.datasource
@@ -106,7 +117,7 @@ class Backend:
         table_name = table_name or self.table_name
         client = SQLClient(self.carto_auth_client)
 
-        client.send("CREATE TABLE IF NOT EXISTS {table_name} (the_geom geometry(Geometry, 4326),{columns})".format(table_name=table_name, columns=",".join([name + " " + value for name, value in self.fields.items()])))
+        client.send("CREATE TABLE IF NOT EXISTS {table_name} ({columns})".format(table_name=table_name, columns=",".join((name + " " + type for (name, type) in self.fields_with_geom))))
         if cartodbfy is True:
             client.send("SELECT CDB_CartodbfyTable('{schema}', '{table_name}')".format(schema=self.carto_auth_client.username, table_name=table_name))
 
@@ -114,5 +125,5 @@ class Backend:
         table_name = table_name or self.table_name
         client = CopySQLClient(self.carto_auth_client)
 
-        query = "COPY {table_name} FROM stdin WITH (FORMAT csv, HEADER true)".format(table_name=table_name)
+        query = "COPY {table_name} ({columns}) FROM stdin WITH (FORMAT csv, HEADER true)".format(table_name=table_name, columns=",".join(self.field_names_with_geom))
         client.copyfrom_file_object(query, descriptor)
